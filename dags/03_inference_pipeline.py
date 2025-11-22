@@ -59,7 +59,7 @@ with DAG(
             'INPUT_TOPOLOGY_PATH': f"{RUNS_DIR}/topology.json",
             'MODEL_MATRIX_PATH': f"{MODELS_DIR}/transition_matrices.pkl",
             'MODEL_STATES_PATH': f"{MODELS_DIR}/state_definitions.pkl",
-            'REF_SEGMENTS_PATH': f"{MODELS_DIR}/reference_segments.pkl",
+            'REF_SEGMENTS_PATH': f"s3://models/reference_segments.pkl",
             'OUTPUT_CYCLE_PATH': f"{RUNS_DIR}/cycle.csv",
             **COMMON_PARAMS
         }
@@ -80,4 +80,4 @@ with DAG(
     # )
 
     # fetch_topology >> generate_cycle >> predict_emissions
-    fetch_topology
+    fetch_topology >> generate_cycle
