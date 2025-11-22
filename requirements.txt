@@ -11,3 +11,5 @@ s3fs
 dtaidistance
 polyline
 requests
+matplotlib
+scipy

@@ -74,4 +74,20 @@ with DAG(
         }
     )
 
-    preprocess_grouping >> dtw_selector >> train_markov
+    # Step 4: Validate Model Quality
+    validate_model = PapermillOperator(
+        task_id='step_07_validate_model',
+        input_nb='/notebooks/07_validate_model_performance.ipynb',
+        output_nb='/logs/07_training_validation.ipynb',
+        kernel_name="python3",
+        parameters={
+            'INPUT_REAL_DATA': 's3://models/grouped_segments.pkl',
+            'INPUT_MODEL_DIR': 's3://models/prod/',
+            'OUTPUT_METRICS_PATH': 's3://models/prod/validation_metrics.json',
+            'OUTPUT_PLOT_PATH': 's3://models/prod/validation_plot.png',
+            'MAX_RMSE_THRESHOLD': 0.15,
+            **COMMON_PARAMS
+        }
+    )
+
+    preprocess_grouping >> dtw_selector >> train_markov >> validate_model
