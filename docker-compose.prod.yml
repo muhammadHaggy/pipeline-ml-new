@@ -1,0 +1,128 @@
+version: '3.8'
+
+networks:
+  data-eng-network:
+    name: data-eng-network
+    driver: bridge
+
+volumes:
+  minio-data:
+    driver: local
+  postgres-db-volume:
+    driver: local
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - data-eng-network
+    volumes:
+      - minio-data:/data
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password123
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  openmaxio:
+    image: haggy24/openmaxio-browser:latest
+    container_name: openmaxio-browser
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "9090:9090"
+    networks:
+      - data-eng-network
+    environment:
+      - CONSOLE_MINIO_SERVER=http://minio:9000
+      - CONSOLE_PBKDF_PASSPHRASE=secret
+      - CONSOLE_PBKDF_SALT=secret
+      - CONSOLE_DEBUG_LOGLEVEL=0
+
+  postgres:
+    image: postgres:13
+    container_name: airflow_postgres
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    networks:
+      - data-eng-network
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-init:
+    image: haggy24/airflow-custom:latest
+    depends_on:
+      - postgres
+    networks:
+      - data-eng-network
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname Docker --lastname Admin --role Admin --email admin@example.com
+      "
+
+  airflow-scheduler:
+    image: haggy24/airflow-custom:latest
+    container_name: airflow-scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_s3_conn
+      - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS=False
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password123
+    networks:
+      - data-eng-network
+    user: "${AIRFLOW_UID:-50000}:0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      bash -c "
+      airflow scheduler
+      "
+
+  airflow-webserver:
+    image: haggy24/airflow-custom:latest
+    container_name: airflow-webserver
+    depends_on:
+      airflow-scheduler:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_s3_conn
+      - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS=False
+    networks:
+      - data-eng-network
+    command: >
+      bash -c "
+      airflow webserver
+      "
+

@@ -1,0 +1,17 @@
+FROM apache/airflow:2.9.0
+
+# Install project dependencies and bake DAGs/notebooks/plugins into the image
+USER root
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
+
+COPY dags/ /opt/airflow/dags/
+COPY plugins/ /opt/airflow/plugins/
+COPY notebooks/ /opt/airflow/notebooks/
+
+RUN chown -R airflow:root /opt/airflow/dags /opt/airflow/plugins /opt/airflow/notebooks
+
+USER airflow
+

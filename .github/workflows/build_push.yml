@@ -1,0 +1,71 @@
+name: Build and Push ML Docker Image
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for Airflow image
+        id: meta_airflow
+        uses: docker/metadata-action@v5
+        with:
+          images: docker.io/${{ vars.DOCKERHUB_USERNAME }}/airflow-custom
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push Airflow image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.airflow
+          push: true
+          tags: ${{ steps.meta_airflow.outputs.tags }}
+          labels: ${{ steps.meta_airflow.outputs.labels }}
+          cache-from: type=gha,scope=airflow-image
+          cache-to: type=gha,scope=airflow-image,mode=max
+
+      - name: Extract metadata for OpenMaxIO image
+        id: meta_openmaxio
+        uses: docker/metadata-action@v5
+        with:
+          images: docker.io/${{ vars.DOCKERHUB_USERNAME }}/openmaxio-browser
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push OpenMaxIO image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.openmaxio
+          push: true
+          tags: ${{ steps.meta_openmaxio.outputs.tags }}
+          labels: ${{ steps.meta_openmaxio.outputs.labels }}
+          cache-from: type=gha,scope=openmaxio-image
+          cache-to: type=gha,scope=openmaxio-image,mode=max
+
