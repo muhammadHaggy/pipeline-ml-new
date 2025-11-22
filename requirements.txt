@@ -1,0 +1,13 @@
+apache-airflow==2.9.0
+apache-airflow-providers-amazon
+apache-airflow-providers-papermill
+apache-airflow-providers-common-compat
+minio
+numpy
+pandas
+papermill
+requests
+s3fs
+dtaidistance
+polyline
+requests

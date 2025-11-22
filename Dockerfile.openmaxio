@@ -1,0 +1,48 @@
+# Stage 1: Build the Frontend
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /build
+
+RUN apk add --no-cache git
+
+# 1. Clone the repo
+RUN git clone https://github.com/OpenMaxIO/openmaxio-object-browser .
+
+# 2. Switch version
+WORKDIR /build/web-app
+RUN git checkout v1.7.6
+
+# 3. Build frontend
+RUN corepack enable && corepack prepare yarn@4.4.0 --activate
+RUN yarn install && yarn build
+
+# Stage 2: Build the Backend (Console binary)
+FROM golang:1.23-alpine AS backend-builder
+
+WORKDIR /go/src/app
+
+RUN apk add --no-cache git make build-base
+
+# Copy source from previous stage (including built frontend assets)
+COPY --from=frontend-builder /build /go/src/app
+
+# 4. Build the console binary
+RUN make console
+
+# Stage 3: Runtime
+FROM alpine:3.18
+
+WORKDIR /app
+
+# Copy the binary
+COPY --from=backend-builder /go/src/app/console /app/console
+
+# Install libc compatibility if needed and certs
+RUN apk add --no-cache libc6-compat ca-certificates
+
+# Expose the port
+EXPOSE 9090
+
+# Run
+CMD ["./console", "server"]
+

@@ -1,0 +1,165 @@
+version: '3.8'
+
+networks:
+  data-eng-network:
+    name: data-eng-network
+    driver: bridge
+
+volumes:
+  minio-data:
+    driver: local
+  postgres-db-volume:
+    driver: local
+
+services:
+  # ==========================================
+  # OBJECT STORAGE (MinIO)
+  # ==========================================
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - data-eng-network
+    volumes:
+      - minio-data:/data
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password123
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ==========================================
+  # OPENMAXIO (Custom Object Browser)
+  # ==========================================
+  openmaxio:
+    build:
+      context: .
+      dockerfile: Dockerfile.openmaxio
+    container_name: openmaxio-browser
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "9090:9090"
+    networks:
+      - data-eng-network
+    environment:
+      # Points to the internal 'minio' service on port 9000
+      - CONSOLE_MINIO_SERVER=http://minio:9000
+      - CONSOLE_PBKDF_PASSPHRASE=secret
+      - CONSOLE_PBKDF_SALT=secret
+      - CONSOLE_DEBUG_LOGLEVEL=0
+
+  # ==========================================
+  # AIRFLOW ORCHESTRATOR
+  # ==========================================
+  postgres:
+    image: postgres:13
+    container_name: airflow_postgres
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    networks:
+      - data-eng-network
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-init:
+    image: apache/airflow:2.9.0
+    depends_on:
+      - postgres
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./notebooks:/notebooks
+      - ./logs:/logs
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    networks:
+      - data-eng-network
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /opt/airflow/requirements.txt &&
+      airflow db migrate &&
+      airflow users create --username admin --password admin --firstname Docker --lastname Admin --role Admin --email admin@example.com
+      "
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.0
+    container_name: airflow-scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_s3_conn
+      - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS=False
+      # Helper Env Vars for your DAGs to find MinIO
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password123
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./notebooks:/notebooks
+      - ./logs:/logs
+      # Critical for DockerOperator
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - data-eng-network
+    user: "${AIRFLOW_UID:-50000}:0"
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /opt/airflow/requirements.txt &&
+      airflow scheduler
+      "
+
+  airflow-webserver:
+    image: apache/airflow:2.9.0
+    container_name: airflow-webserver
+    depends_on:
+      airflow-scheduler:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__LOGGING__REMOTE_LOGGING=True
+      - AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER=s3://airflow-logs
+      - AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID=minio_s3_conn
+      - AIRFLOW__LOGGING__ENCRYPT_S3_LOGS=False
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      # requirements for UI-triggered tasks
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./notebooks:/notebooks
+      - ./logs:/logs
+    networks:
+      - data-eng-network
+    command: >
+      bash -c "
+      pip install --no-cache-dir -r /opt/airflow/requirements.txt &&
+      airflow webserver
+      "
+
