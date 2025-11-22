@@ -65,19 +65,18 @@ with DAG(
         }
     )
 
-    # # Task 3: Predict Emissions
-    # predict_emissions = PapermillOperator(
-    #     task_id='step_06_movestar',
-    #     input_nb='/notebooks/06_movestar.ipynb',
-    #     output_nb=f'/logs/06_inf_{{{{ run_id }}}}.ipynb',
-    #     kernel_name="python3",
-    #     parameters={
-    #         'INPUT_CYCLE_PATH': f"{RUNS_DIR}/cycle.csv",
-    #         'VEHICLE_TYPE': 1,
-    #         'OUTPUT_REPORT_PATH': f"{RUNS_DIR}/emissions.json",
-    #         **COMMON_PARAMS
-    #     }
-    # )
+    # Task 3: Predict Emissions
+    predict_emissions = PapermillOperator(
+        task_id='step_06_movestar',
+        input_nb='/notebooks/06_movestar.ipynb',
+        output_nb=f'/logs/06_inf_{{{{ run_id }}}}.ipynb',
+        kernel_name="python3",
+        parameters={
+            'INPUT_CYCLE_PATH': f"{RUNS_DIR}/cycle.csv",
+            'VEHICLE_TYPE': 1,
+            'OUTPUT_REPORT_PATH': f"{RUNS_DIR}/emissions.json",
+            **COMMON_PARAMS
+        }
+    )
 
-    # fetch_topology >> generate_cycle >> predict_emissions
-    fetch_topology >> generate_cycle
+    fetch_topology >> generate_cycle >> predict_emissions
