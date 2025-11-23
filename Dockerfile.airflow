@@ -8,10 +8,10 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
 
 # Bake DAGs/notebooks/plugins into the image
 USER root
-COPY dags/ /opt/airflow/dags/
-COPY plugins/ /opt/airflow/plugins/
+COPY dags/ /dags/
+COPY plugins/ /plugins/
 COPY notebooks/ /notebooks/
-RUN chown -R airflow:root /opt/airflow/dags /opt/airflow/plugins /notebooks
+RUN chown -R airflow:root /dags /plugins /notebooks
 
 USER airflow
 
