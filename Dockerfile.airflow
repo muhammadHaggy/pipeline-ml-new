@@ -11,6 +11,8 @@ USER root
 COPY dags/ /dags/
 COPY plugins/ /plugins/
 COPY notebooks/ /notebooks/
+# make logs directory
+RUN mkdir -p /logs
 RUN chown -R airflow:root /dags /plugins /notebooks
 
 USER airflow
