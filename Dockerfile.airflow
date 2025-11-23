@@ -11,7 +11,7 @@ USER root
 COPY dags/ /opt/airflow/dags/
 COPY plugins/ /opt/airflow/plugins/
 COPY notebooks/ /notebooks/
-RUN chown -R airflow:root /opt/airflow/dags /opt/airflow/plugins /opt/airflow/notebooks
+RUN chown -R airflow:root /opt/airflow/dags /opt/airflow/plugins /notebooks
 
 USER airflow
 
