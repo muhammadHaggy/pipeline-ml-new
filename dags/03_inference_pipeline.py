@@ -11,7 +11,7 @@ def get_minio_creds():
         extra = json.loads(conn.extra) if conn.extra else {}
         return conn.login, conn.password, extra.get('endpoint_url', 'http://minio:9000')
     except:
-        return "admin", "password123", "http://minio:9000"
+        return "admin", "bismillahlulus", "http://minio:9000"
 
 ACCESS_KEY, SECRET_KEY, ENDPOINT = get_minio_creds()
 

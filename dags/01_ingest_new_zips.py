@@ -26,7 +26,7 @@ def get_s3fs_options():
         # Fallback for local testing if connection is missing
         return {
             'key': 'admin', 
-            'secret': 'password123', 
+            'secret': 'bismillahlulus', 
             'client_kwargs': {'endpoint_url': 'http://minio:9000'}
         }
 
