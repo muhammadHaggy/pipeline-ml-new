@@ -3,6 +3,7 @@ from airflow.providers.papermill.operators.papermill import PapermillOperator
 from airflow.utils.dates import days_ago
 from airflow.hooks.base import BaseHook
 import json
+from config import get_notebook_path, get_log_path
 
 # 1. Fetch Credentials from Airflow Connection
 def get_minio_creds():
@@ -34,8 +35,8 @@ with DAG(
     # Step 1: Group Segments
     preprocess_grouping = PapermillOperator(
         task_id='step_01_group_segments',
-        input_nb='/notebooks/01_preprocess.ipynb',
-        output_nb='/logs/01_training_grouping.ipynb',
+        input_nb=get_notebook_path('01_preprocess.ipynb'),
+        output_nb=get_log_path('01_training_grouping.ipynb'),
         kernel_name="python3",
         parameters={
             'INPUT_FOLDER': 's3://processed-data/',
@@ -49,8 +50,8 @@ with DAG(
     # Step 2: DTW Selection
     dtw_selector = PapermillOperator(
         task_id='step_02_dtw_selector',
-        input_nb='/notebooks/02_dtw_selector.ipynb',
-        output_nb='/logs/02_training_dtw.ipynb',
+        input_nb=get_notebook_path('02_dtw_selector.ipynb'),
+        output_nb=get_log_path('02_training_dtw.ipynb'),
         kernel_name="python3",
         parameters={
             'INPUT_GROUPED_DATA': 's3://models/grouped_segments.pkl',
@@ -62,8 +63,8 @@ with DAG(
     # Step 3: Train Markov
     train_markov = PapermillOperator(
         task_id='step_03_train_markov',
-        input_nb='/notebooks/03_train_markov.ipynb',
-        output_nb='/logs/03_training_markov.ipynb',
+        input_nb=get_notebook_path('03_train_markov.ipynb'),
+        output_nb=get_log_path('03_training_markov.ipynb'),
         kernel_name="python3",
         parameters={
             'INPUT_GROUPED_DATA': 's3://models/grouped_segments.pkl',
@@ -77,8 +78,8 @@ with DAG(
     # Step 4: Validate Model Quality
     validate_model = PapermillOperator(
         task_id='step_07_validate_model',
-        input_nb='/notebooks/07_validate_model_performance.ipynb',
-        output_nb='/logs/07_training_validation.ipynb',
+        input_nb=get_notebook_path('07_validate_model_performance.ipynb'),
+        output_nb=get_log_path('07_training_validation.ipynb'),
         kernel_name="python3",
         parameters={
             'INPUT_REAL_DATA': 's3://models/grouped_segments.pkl',

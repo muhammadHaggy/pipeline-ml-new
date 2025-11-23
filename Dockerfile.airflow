@@ -8,12 +8,17 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
 
 # Bake DAGs/notebooks/plugins into the image
 USER root
-COPY dags/ /dags/
-COPY plugins/ /plugins/
+COPY dags/ /opt/airflow/dags/
+COPY plugins/ /opt/airflow/plugins/
 COPY notebooks/ /notebooks/
-# make logs directory
-RUN mkdir -p /logs
-RUN chown -R airflow:root /dags /plugins /notebooks
+
+# Ensure runtime directories exist and have the expected ownership
+RUN mkdir -p /logs /opt/airflow/dags /opt/airflow/plugins /notebooks \
+    && chown -R airflow:root /opt/airflow/dags /opt/airflow/plugins /notebooks /logs
+
+# Provide overridable defaults for path-sensitive code
+ENV NOTEBOOKS_ROOT=/notebooks \
+    LOGS_ROOT=/logs
 
 USER airflow
 

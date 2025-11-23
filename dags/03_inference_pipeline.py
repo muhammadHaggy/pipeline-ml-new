@@ -3,6 +3,7 @@ from airflow.providers.papermill.operators.papermill import PapermillOperator
 from airflow.utils.dates import days_ago
 from airflow.hooks.base import BaseHook
 import json
+from config import get_notebook_path, get_log_path
 
 # 1. Get Creds
 def get_minio_creds():
@@ -37,8 +38,8 @@ with DAG(
     # Task 1: Fetch Topology
     fetch_topology = PapermillOperator(
         task_id='step_04_fetch_topology',
-        input_nb='/notebooks/04_fetch_topology.ipynb',
-        output_nb=f'/logs/04_inf_{{{{ run_id }}}}.ipynb',
+        input_nb=get_notebook_path('04_fetch_topology.ipynb'),
+        output_nb=get_log_path(f'04_inf_{{{{ run_id }}}}.ipynb'),
         kernel_name="python3",
         parameters={
             'ORIGIN_ADDRESS': '{{ dag_run.conf["origin"] }}',
@@ -52,8 +53,8 @@ with DAG(
     # Task 2: Generate Cycle
     generate_cycle = PapermillOperator(
         task_id='step_05_generate_cycle',
-        input_nb='/notebooks/05_generate_cycle.ipynb',
-        output_nb=f'/logs/05_inf_{{{{ run_id }}}}.ipynb',
+        input_nb=get_notebook_path('05_generate_cycle.ipynb'),
+        output_nb=get_log_path(f'05_inf_{{{{ run_id }}}}.ipynb'),
         kernel_name="python3",
         parameters={
             'INPUT_TOPOLOGY_PATH': f"{RUNS_DIR}/topology.json",
@@ -68,8 +69,8 @@ with DAG(
     # Task 3: Predict Emissions
     predict_emissions = PapermillOperator(
         task_id='step_06_movestar',
-        input_nb='/notebooks/06_movestar.ipynb',
-        output_nb=f'/logs/06_inf_{{{{ run_id }}}}.ipynb',
+        input_nb=get_notebook_path('06_movestar.ipynb'),
+        output_nb=get_log_path(f'06_inf_{{{{ run_id }}}}.ipynb'),
         kernel_name="python3",
         parameters={
             'INPUT_CYCLE_PATH': f"{RUNS_DIR}/cycle.csv",

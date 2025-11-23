@@ -6,6 +6,7 @@ from airflow.hooks.base import BaseHook  # <--- Import this
 import s3fs
 import os
 import json
+from config import get_notebook_path, get_logs_root
 
 # Helper function to load creds from the Connection we just made
 def get_s3fs_options():
@@ -29,6 +30,9 @@ def get_s3fs_options():
             'secret': 'bismillahlulus', 
             'client_kwargs': {'endpoint_url': 'http://minio:9000'}
         }
+
+LOGS_ROOT = get_logs_root()
+
 
 with DAG(
     dag_id='01_ingest_new_zips',
@@ -70,10 +74,10 @@ with DAG(
 
     process_trips = PapermillOperator.partial(
         task_id="process_trip",
-        input_nb="/notebooks/00_ingest_raw_trip.ipynb",
+        input_nb=get_notebook_path("00_ingest_raw_trip.ipynb"),
         kernel_name="python3"
     ).expand(
-        output_nb=new_trips.map(lambda x: f"/logs/00_{x}.ipynb"),
+        output_nb=new_trips.map(lambda x: f"{LOGS_ROOT}/00_{x}.ipynb"),
         
         # ALL parameters (static + dynamic) must be defined here
         parameters=new_trips.map(lambda x: {
