@@ -13,3 +13,4 @@ polyline
 requests
 matplotlib
 scipy
+scikit-learn
