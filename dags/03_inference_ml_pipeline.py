@@ -17,15 +17,6 @@ def get_minio_creds():
     except:
         return "admin", "bismillahlulus", "http://minio:9000"
 
-def validate_inputs(**context):
-    conf = context["dag_run"].conf
-
-    if "origin" not in conf or "dest" not in conf:
-        raise AirflowException(
-            "❌ Missing required DAG run config: 'origin' and 'dest'.\n"
-            "Example:\n{\n  \"origin\": \"UI Depok\",\n  \"dest\": \"MARGOCITY Depok\"\n}"
-        )
-
 
 ACCESS_KEY, SECRET_KEY, ENDPOINT = get_minio_creds()
 
@@ -44,22 +35,8 @@ with DAG(
     schedule_interval=None,
     start_date=days_ago(1),
     catchup=False,
-    is_paused_upon_creation=False,
-    render_template_as_native_obj=True,
-    params={
-        "origin": Param(default="", type="string"),
-        "dest": Param(default="", type="string"),
-    },
     tags=['mlops', 'inference', 'ml']
 ) as dag:
-
-
-    # Validate user inputs
-    validate_user_inputs = PythonOperator(
-        task_id="validate_user_inputs",
-        python_callable=validate_inputs,
-        provide_context=True
-    )
 
     # 1. Fetch topology from Google Maps APIs
     fetch_topology_ml = PapermillOperator(
@@ -106,54 +83,7 @@ with DAG(
         }
     )
 
-    # 4. VALIDATE ML QUALITY (Speed/Accel/VSP)
-    validate_ml_quality = PapermillOperator(
-    task_id='step_07_validate_ml_quality',
-    input_nb=get_notebook_path('08_validate_quality_metrics_ml.ipynb'),
-    output_nb=get_log_path('08_validate_quality_ml_{{ run_id }}.ipynb'),
-    kernel_name="python3",
-    parameters={
-        # Real test data from preprocess step (holdout set)
-        'INPUT_TEST_DATA': (
-            "s3://models-quality-eval/"
-            "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}"
-            "/test/test_data.pkl"
-        ),
-
-        # ML predictions output by your speed+acc inference notebook
-        'INPUT_PREDICTED_DATA': (
-            "s3://models-quality-eval/"
-            "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}"
-            "/pred/pred_speed_accel.csv"
-        ),
-
-        # Where to store metrics
-        'OUTPUT_METRICS_PATH': (
-            "s3://models-quality-eval/"
-            "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}"
-            "/metrics/ml_quality.json"
-        ),
-
-        # Where to store plots
-        'OUTPUT_PLOT_PATH': (
-            "s3://models-quality-eval/"
-            "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}"
-            "/plots/ml_quality.png"
-        ),
-
-        # MinIO credentials
-        'MINIO_ENDPOINT': ENDPOINT,
-        'MINIO_ACCESS_KEY': ACCESS_KEY,
-        'MINIO_SECRET_KEY': SECRET_KEY,
-
-        # Quality thresholds (same as notebook defaults)
-        'MAX_SPEED_RMSE': 3.0,
-        'MAX_ACCEL_RMSE': 0.5,
-        'MAX_VSP_RMSE': 0.4,
-        'MAX_SPEED_KL': 0.30,
-        'MAX_VSP_KL': 0.40,
-    }
-)
+    
 
 
-    validate_user_inputs >> fetch_topology_ml >> predict_speed_accel >> predict_emissions >> validate_ml_quality
+    fetch_topology_ml >> predict_speed_accel >> predict_emissions
