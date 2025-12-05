@@ -49,7 +49,7 @@ with DAG(
 
     # Step 2: Train ML Model (Speed + Acceleration)
     train_ml_model = PapermillOperator(
-        task_id='step_05_train_ml_model',
+        task_id='step_02_train_ml_model',
         input_nb=get_notebook_path('03_simplified_train_ml_speed_accel.ipynb'),
         output_nb=get_log_path('05_training_ml_model.ipynb'),
         kernel_name="python3",

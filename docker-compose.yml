@@ -73,7 +73,10 @@ services:
       - postgres-db-volume:/var/lib/postgresql/data
 
   airflow-init:
-    image: apache/airflow:2.9.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-airflow:latest
     depends_on:
       - postgres
     volumes:
@@ -81,7 +84,7 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - ./requirements.txt:/opt/airflow/requirements.txt
-      - ./notebooks:/notebooks
+      - ./notebooks:/opt/airflow/notebooks
       - ./logs:/logs
     environment:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
@@ -97,7 +100,10 @@ services:
       "
 
   airflow-scheduler:
-    image: apache/airflow:2.9.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-airflow:latest
     container_name: airflow-scheduler
     depends_on:
       airflow-init:
@@ -119,7 +125,7 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - ./requirements.txt:/opt/airflow/requirements.txt
-      - ./notebooks:/notebooks
+      - ./notebooks:/opt/airflow/notebooks
       - ./logs:/logs
       # Critical for DockerOperator
       - /var/run/docker.sock:/var/run/docker.sock
@@ -133,7 +139,10 @@ services:
       "
 
   airflow-webserver:
-    image: apache/airflow:2.9.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: my-airflow:latest
     container_name: airflow-webserver
     depends_on:
       airflow-scheduler:
@@ -154,7 +163,8 @@ services:
       - ./plugins:/opt/airflow/plugins
       # requirements for UI-triggered tasks
       - ./requirements.txt:/opt/airflow/requirements.txt
-      - ./notebooks:/notebooks
+      - /opt/airflow/notebooks
+      - ./notebooks:/opt/airflow/notebooks
       - ./logs:/logs
     networks:
       - data-eng-network
