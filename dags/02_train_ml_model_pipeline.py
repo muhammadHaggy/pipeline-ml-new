@@ -56,6 +56,7 @@ with DAG(
         parameters={
             'INPUT_PROCESSED_FOLDER': 's3://processed-data/',
             'OUTPUT_ML_MODEL_PATH': 's3://models/ml/speed_accel_model.pkl',
+            'OUTPUT_TRAIN_RESULTS_CSV': 's3://models/ml/speed_accel_train_results.csv',
             **COMMON_PARAMS
         }
     )
