@@ -106,5 +106,26 @@ with DAG(
         }
     )
 
+    ml_validate_quality_with_emissions = PapermillOperator(
+        task_id='step_04_ml_validate_quality_with_emissions',
+        input_nb=get_notebook_path('08_ml_validate_quality_with_emissions.ipynb'),
+        output_nb=get_log_path('08_ml_quality_eval_validation_with_emissions.ipynb'),
+        kernel_name="python3",
+        parameters={
+            'RUN_TIMESTAMP': "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}",
+            'INPUT_TEST_DATA': "s3://models-quality-eval-ml/test/test_data.pkl",
+            'INPUT_ML_MODEL_PATH': "s3://models-quality-eval-ml/models/speed_accel_model.pkl",
+            'OUTPUT_METRICS_PATH': "s3://models-quality-eval-ml/metrics/quality_metrics_with_emissions.json",
+            'OUTPUT_PLOT_PATH': "s3://models-quality-eval-ml/metrics/validation_plots_with_emissions.png",
+            # Relaxed thresholds for single-file testing
+            'MIN_R2_SCORE': 0.85,
+            'MAX_SPEED_RMSE': 2.5,   # m/s
+            'MAX_ACCEL_RMSE': 0.7,   # m/s²
+            'MAX_SPEED_MAE': 2.0,    # m/s
+            'MAX_ACCEL_MAE': 0.5,    # m/s²
+            **COMMON_PARAMS
+        }
+    )
+
     # Pipeline flow
-    get_timestamp >> ml_train_test_split >> ml_train_model >> ml_validate_quality
+    get_timestamp >> ml_train_test_split >> ml_train_model >> ml_validate_quality >> ml_validate_quality_with_emissions

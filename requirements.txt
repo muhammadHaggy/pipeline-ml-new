@@ -1,16 +1,43 @@
+# Apache Airflow
 apache-airflow==2.9.0
 apache-airflow-providers-amazon
 apache-airflow-providers-papermill
 apache-airflow-providers-common-compat
+
+# MinIO/S3
 minio
+s3fs
+boto3==1.34.10
+
+# Data Processing
 numpy
 pandas
 papermill
-requests
-s3fs
-dtaidistance
+
+# Geospatial
+geopy==2.4.1
 polyline
+
+# Google Maps APIs
+googlemaps==4.10.0
 requests
-matplotlib
+
+# Machine Learning
+scikit-learn==1.3.2
+xgboost==1.7.6
+lightgbm==4.1.0
+
+# Time Series & Similarity
+dtaidistance
 scipy
-scikit-learn
+
+# Visualization
+matplotlib
+seaborn==0.13.0
+
+# Utilities
+python-dateutil==2.8.2
+
+# Jupyter for local development
+jupyter==1.0.0
+notebook==7.0.6
