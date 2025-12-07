@@ -11,15 +11,14 @@ This is an **independent training pipeline** designed to measure the quality of 
 - Uses fixed random seed (42) for reproducibility
 - Ensures no data leakage between train and test sets
 
-### 📊 **Comprehensive Quality Metrics**
+### 📊 **Quality Metrics**
 
-1. **KL Divergence** - Measures difference between synthetic and real speed distributions
-2. **Kinematic Comparisons**:
+1. **Kinematic Comparisons**:
    - Average speed (real vs synthetic)
    - Average acceleration (real vs synthetic)
    - Standard deviation of speed
    - Standard deviation of acceleration
-3. **VSP Distribution RMSE** - Existing metric for emission modeling validation
+2. **VSP Distribution RMSE** - Metric for emission modeling validation
 
 ### 🗂️ **Versioned Storage**
 Each pipeline run creates a timestamped folder in MinIO:
@@ -33,8 +32,7 @@ s3://models-quality-eval/
 │   │   └── state_definitions.pkl
 │   └── metrics/
 │       ├── quality_metrics.json
-│       ├── comparison_plots.png
-│       └── kl_divergence_report.txt
+│       └── comparison_plots.png
 └── 2025-12-06_18-00-00/
     └── ... (next run)
 ```
@@ -74,7 +72,6 @@ Step 3: Validate Quality (on test set)
 
 | Metric | Threshold | Description |
 |--------|-----------|-------------|
-| KL Divergence | < 0.5 | Lower is better, measures distribution similarity |
 | Speed Difference | < 5 km/h | Absolute difference in average speed |
 | Acceleration Difference | < 0.5 m/s² | Absolute difference in average acceleration |
 | VSP RMSE | < 0.15 | Root mean square error on VSP distributions |
@@ -100,7 +97,6 @@ Step 3: Validate Quality (on test set)
 ```json
 {
   "Heavy Traffic": {
-    "kl_divergence": 0.234,
     "avg_speed_real_kmh": 18.5,
     "avg_speed_synthetic_kmh": 19.2,
     "speed_difference_kmh": 0.7,
@@ -118,13 +114,6 @@ Step 3: Validate Quality (on test set)
 Visual comparison with 8 subplots (2 rows x 4 columns):
 - Row 1: Heavy Traffic (Speed dist, VSP dist, Speed stats, Accel stats)
 - Row 2: Light Traffic (Speed dist, VSP dist, Speed stats, Accel stats)
-
-### `kl_divergence_report.txt`
-Detailed text report with:
-- KL divergence values
-- Kinematic comparisons
-- Quality thresholds
-- Pass/Fail status
 
 ## Usage
 
