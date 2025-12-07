@@ -5,7 +5,6 @@ from airflow.hooks.base import BaseHook
 import json
 from config import get_notebook_path, get_log_path
 
-# 1. Fetch Credentials from Airflow Connection
 def get_minio_creds():
     try:
         conn = BaseHook.get_connection("minio_s3_conn")
@@ -16,7 +15,6 @@ def get_minio_creds():
 
 ACCESS_KEY, SECRET_KEY, ENDPOINT = get_minio_creds()
 
-# 2. Prepare Common Parameters
 COMMON_PARAMS = {
     "MINIO_ENDPOINT": ENDPOINT,
     "MINIO_ACCESS_KEY": ACCESS_KEY,
@@ -49,9 +47,8 @@ with DAG(
     )
 
     # Step 1: Intelligent Train/Test Split
-    # Handles both single-file and multi-file scenarios
     ml_train_test_split = PapermillOperator(
-        task_id='step_01_intelligent_split',
+        task_id='step_01_ml_train_test_split',
         input_nb=get_notebook_path('01_ml_train_test_split.ipynb'),
         output_nb=get_log_path('01_ml_quality_eval_split.ipynb'),
         kernel_name="python3",
@@ -68,7 +65,7 @@ with DAG(
     )
 
     # Step 2: Train ML Model 
-    # Uses fixed hyperparameters, optional CV
+    # Also uses fixed hyperparameters
     ml_train_model = PapermillOperator(
         task_id='step_02_ml_train',
         input_nb=get_notebook_path('03_ml_train_quality_eval.ipynb'),
@@ -78,13 +75,13 @@ with DAG(
             'RUN_TIMESTAMP': "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}",
             'INPUT_TRAIN_DATA': "s3://models-quality-eval-ml/train/train_data.pkl",
             'OUTPUT_ML_MODEL_PATH': "s3://models-quality-eval-ml/models/speed_accel_model.pkl",
-            'USE_CROSS_VALIDATION': False,  # Set True for extra robustness (slower)
+            'USE_CROSS_VALIDATION': False, 
             **COMMON_PARAMS
         }
     )
 
     # Step 3: Validate Quality on Test Set
-    # Uses YOUR acceleration method: predicted_speed - speed_mps_prev1
+    # acceleration method: predicted_speed - speed_mps_prev1
     ml_validate_quality = PapermillOperator(
         task_id='step_03_ml_validate_quality',
         input_nb=get_notebook_path('08_ml_validate_quality.ipynb'),
@@ -96,12 +93,12 @@ with DAG(
             'INPUT_ML_MODEL_PATH': "s3://models-quality-eval-ml/models/speed_accel_model.pkl",
             'OUTPUT_METRICS_PATH': "s3://models-quality-eval-ml/metrics/quality_metrics.json",
             'OUTPUT_PLOT_PATH': "s3://models-quality-eval-ml/metrics/validation_plots.png",
-            # Relaxed thresholds for single-file testing
+
             'MIN_R2_SCORE': 0.85,
-            'MAX_SPEED_RMSE': 2.5,   # m/s
-            'MAX_ACCEL_RMSE': 0.7,   # m/s²
-            'MAX_SPEED_MAE': 2.0,    # m/s
-            'MAX_ACCEL_MAE': 0.5,    # m/s²
+            'MAX_SPEED_RMSE': 2.5,   
+            'MAX_ACCEL_RMSE': 0.7,   
+            'MAX_SPEED_MAE': 2.0,  
+            'MAX_ACCEL_MAE': 0.5,   
             **COMMON_PARAMS
         }
     )
@@ -117,15 +114,15 @@ with DAG(
             'INPUT_ML_MODEL_PATH': "s3://models-quality-eval-ml/models/speed_accel_model.pkl",
             'OUTPUT_METRICS_PATH': "s3://models-quality-eval-ml/metrics/quality_metrics_with_emissions.json",
             'OUTPUT_PLOT_PATH': "s3://models-quality-eval-ml/metrics/validation_plots_with_emissions.png",
-            # Relaxed thresholds for single-file testing
+
             'MIN_R2_SCORE': 0.85,
-            'MAX_SPEED_RMSE': 2.5,   # m/s
-            'MAX_ACCEL_RMSE': 0.7,   # m/s²
-            'MAX_SPEED_MAE': 2.0,    # m/s
-            'MAX_ACCEL_MAE': 0.5,    # m/s²
+            'MAX_SPEED_RMSE': 2.5,   
+            'MAX_ACCEL_RMSE': 0.7,   
+            'MAX_SPEED_MAE': 2.0,    
+            'MAX_ACCEL_MAE': 0.5,    
             **COMMON_PARAMS
         }
     )
 
-    # Pipeline flow
+
     get_timestamp >> ml_train_test_split >> ml_train_model >> ml_validate_quality >> ml_validate_quality_with_emissions

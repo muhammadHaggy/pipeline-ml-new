@@ -8,7 +8,6 @@ from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
 from airflow.models.param import Param
 
-# --- Load MinIO Credentials ---
 def get_minio_creds():
     try:
         conn = BaseHook.get_connection("minio_s3_conn")
@@ -26,7 +25,6 @@ COMMON_PARAMS = {
     "MINIO_SECRET_KEY": SECRET_KEY
 }
 
-# --- S3 Paths ---
 MODELS_DIR = "s3://models/ml"
 RUNS_DIR = "s3://runs/{{ run_id }}"
 
@@ -69,7 +67,7 @@ with DAG(
     }
     )
 
-    # (optional) 3. Emission calculation from predicted speed (VSP)
+    # 3. Emission calculation from predicted speed (VSP)
     predict_emissions = PapermillOperator(
         task_id='step_06_movestar',
         input_nb=get_notebook_path('06_movestar.ipynb'),

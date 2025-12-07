@@ -43,7 +43,7 @@ with DAG(
             'OUTPUT_GROUPED_DATA': 's3://models/grouped_segments.pkl',
             'SPEED_THRESHOLD': 25.0,
             'MIN_DURATION': 15,
-            **COMMON_PARAMS  # <--- Merge creds here
+            **COMMON_PARAMS  
         }
     )
 
