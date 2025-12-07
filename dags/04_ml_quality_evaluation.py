@@ -105,8 +105,8 @@ with DAG(
 
     ml_validate_quality_with_emissions = PapermillOperator(
         task_id='step_04_ml_validate_quality_with_emissions',
-        input_nb=get_notebook_path('08_ml_validate_quality_with_emissions_vsp.ipynb'), #08_ml_validate_quality_with_emissions
-        output_nb=get_log_path('08_ml_quality_eval_validation_with_emissions_vsp.ipynb'), #08_ml_quality_eval_validation_with_emissions
+        input_nb=get_notebook_path('08_ml_validate_quality_with_emissions.ipynb'), #08_ml_validate_quality_with_emissions
+        output_nb=get_log_path('08_ml_quality_eval_validation_with_emissions.ipynb'), #08_ml_quality_eval_validation_with_emissions
         kernel_name="python3",
         parameters={
             'RUN_TIMESTAMP': "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}",
