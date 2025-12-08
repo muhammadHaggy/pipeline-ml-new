@@ -126,9 +126,12 @@ New structure with combined overall metrics for cross-method comparison:
 **Key Feature**: The `overall` section contains weighted-average metrics suitable for comparing this Markov-based approach with other drive cycle generation methods.
 
 ### `comparison_plots.png`
-Visual comparison with 8 subplots (2 rows x 4 columns):
+Visual comparison with 12 subplots (3 rows x 4 columns):
 - Row 1: Heavy Traffic (Speed dist, VSP dist, Speed stats, Accel stats)
 - Row 2: Light Traffic (Speed dist, VSP dist, Speed stats, Accel stats)
+- Row 3: Combined Overall (Speed dist, VSP dist, Speed stats, Accel stats)
+
+**Note:** Row 3 shows the combined metrics by concatenating all data from both traffic conditions, providing a visual representation that matches the `overall` section in the JSON output.
 
 ## Usage
 

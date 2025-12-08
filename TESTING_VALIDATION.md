@@ -146,7 +146,7 @@ cat /tmp/final_metrics.json | jq .overall
 #### Output File Checks
 
 - ✅ `quality_metrics.json` exists
-- ✅ `comparison_plots.png` exists
+- ✅ `comparison_plots.png` exists (now 3 rows x 4 columns = 12 subplots)
 - ❌ `kl_divergence_report.txt` should NOT exist (removed)
 
 #### JSON Structure Checks

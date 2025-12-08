@@ -69,6 +69,14 @@ def aggregate_metrics(metrics_dict):
 
 #### Cell 5 (Generate & Compare) - Major Changes
 
+**Added Combined Overall Plots (Row 3):**
+- Changed figure size from (16, 10) to (16, 15) to accommodate third row
+- Added storage for combined data: `all_real_speed`, `all_syn_speed`, `all_real_vsp`, `all_syn_vsp`
+- Updated all subplot calls from `plt.subplot(2, 4, ...)` to `plt.subplot(3, 4, ...)`
+- Added Row 3 after the loop with 4 combined plots showing overall metrics
+- Combined plots concatenate all data from both traffic conditions
+- **Result**: Visual representation now matches JSON structure (heavy, light, overall)
+
 **Fixed Plot Saving Issue:**
 - Changed `plt.figure()` to `fig = plt.figure()` to capture explicit figure reference
 - Moved plot saving from Cell 6 to end of Cell 5 (immediately after `plt.tight_layout()`)
