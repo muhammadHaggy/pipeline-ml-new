@@ -8,6 +8,7 @@ from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowException
 from airflow.models.param import Param
 
+# --- Load MinIO Credentials ---
 def get_minio_creds():
     try:
         conn = BaseHook.get_connection("minio_s3_conn")
@@ -15,6 +16,15 @@ def get_minio_creds():
         return conn.login, conn.password, extra.get('endpoint_url', 'http://minio:9000')
     except:
         return "admin", "bismillahlulus", "http://minio:9000"
+
+def validate_inputs(**context):
+    conf = context["dag_run"].conf
+
+    if "origin" not in conf or "dest" not in conf:
+        raise AirflowException(
+            "❌ Missing required DAG run config: 'origin' and 'dest'.\n"
+            "Example:\n{\n  \"origin\": \"UI Depok\",\n  \"dest\": \"MARGOCITY Depok\"\n}"
+        )
 
 
 ACCESS_KEY, SECRET_KEY, ENDPOINT = get_minio_creds()
@@ -25,6 +35,7 @@ COMMON_PARAMS = {
     "MINIO_SECRET_KEY": SECRET_KEY
 }
 
+# --- S3 Paths ---
 MODELS_DIR = "s3://models/ml"
 RUNS_DIR = "s3://runs/{{ run_id }}"
 
@@ -33,8 +44,22 @@ with DAG(
     schedule_interval=None,
     start_date=days_ago(1),
     catchup=False,
+    is_paused_upon_creation=False,
+    render_template_as_native_obj=True,
+    params={
+        "origin": Param(default="", type="string"),
+        "dest": Param(default="", type="string"),
+    },
     tags=['mlops', 'inference', 'ml']
 ) as dag:
+
+
+    # Validate user inputs
+    validate_user_inputs = PythonOperator(
+        task_id="validate_user_inputs",
+        python_callable=validate_inputs,
+        provide_context=True
+    )
 
     # 1. Fetch topology from Google Maps APIs
     fetch_topology_ml = PapermillOperator(
@@ -67,7 +92,7 @@ with DAG(
     }
     )
 
-    # 3. Emission calculation from predicted speed (VSP)
+    # (optional) 3. Emission calculation from predicted speed (VSP)
     predict_emissions = PapermillOperator(
         task_id='step_06_movestar',
         input_nb=get_notebook_path('06_movestar.ipynb'),
@@ -84,4 +109,4 @@ with DAG(
     
 
 
-    fetch_topology_ml >> predict_speed_accel >> predict_emissions
+    validate_user_inputs >> fetch_topology_ml >> predict_speed_accel >> predict_emissions
