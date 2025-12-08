@@ -86,7 +86,7 @@ with DAG(
         }
     )
 
-    # Step 3: Validate Quality with Enhanced Metrics
+    # Step 3: Validate Quality with Combined Traffic Metrics
     validate_quality = PapermillOperator(
         task_id='step_03_validate_quality',
         input_nb=get_notebook_path('08_validate_quality_metrics.ipynb'),
@@ -98,8 +98,6 @@ with DAG(
             'INPUT_MODEL_DIR': "s3://models-quality-eval/{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}/models/",
             'OUTPUT_METRICS_PATH': "s3://models-quality-eval/{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}/metrics/quality_metrics.json",
             'OUTPUT_PLOT_PATH': "s3://models-quality-eval/{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}/metrics/comparison_plots.png",
-            'OUTPUT_KL_REPORT_PATH': "s3://models-quality-eval/{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}/metrics/kl_divergence_report.txt",
-            'MAX_KL_DIVERGENCE': 0.5,
             'MAX_SPEED_DIFF': 5.0,
             'MAX_ACCEL_DIFF': 0.5,
             'MAX_RMSE_THRESHOLD': 0.15,

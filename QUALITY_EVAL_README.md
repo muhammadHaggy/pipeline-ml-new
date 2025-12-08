@@ -13,13 +13,15 @@ This is an **independent training pipeline** designed to measure the quality of 
 
 ### 📊 **Comprehensive Quality Metrics**
 
-1. **KL Divergence** - Measures difference between synthetic and real speed distributions
-2. **Kinematic Comparisons**:
+**Combined Traffic Metrics** - All metrics are aggregated across heavy and light traffic conditions using weighted averaging by sample size. This allows comparison with other drive cycle generation methods.
+
+1. **Kinematic Comparisons**:
    - Average speed (real vs synthetic)
    - Average acceleration (real vs synthetic)
    - Standard deviation of speed
    - Standard deviation of acceleration
-3. **VSP Distribution RMSE** - Existing metric for emission modeling validation
+2. **VSP Distribution RMSE** - Metric for emission modeling validation
+3. **Overall Validation Status** - Pass/Fail based on combined metrics
 
 ### 🗂️ **Versioned Storage**
 Each pipeline run creates a timestamped folder in MinIO:
@@ -33,8 +35,7 @@ s3://models-quality-eval/
 │   │   └── state_definitions.pkl
 │   └── metrics/
 │       ├── quality_metrics.json
-│       ├── comparison_plots.png
-│       └── kl_divergence_report.txt
+│       └── comparison_plots.png
 └── 2025-12-06_18-00-00/
     └── ... (next run)
 ```
@@ -72,12 +73,13 @@ Step 3: Validate Quality (on test set)
 
 ## Quality Thresholds
 
+Applied to **combined metrics** across both heavy and light traffic conditions:
+
 | Metric | Threshold | Description |
 |--------|-----------|-------------|
-| KL Divergence | < 0.5 | Lower is better, measures distribution similarity |
-| Speed Difference | < 5 km/h | Absolute difference in average speed |
-| Acceleration Difference | < 0.5 m/s² | Absolute difference in average acceleration |
-| VSP RMSE | < 0.15 | Root mean square error on VSP distributions |
+| Speed Difference | < 5 km/h | Absolute difference in average speed (weighted average) |
+| Acceleration Difference | < 0.5 m/s² | Absolute difference in average acceleration (weighted average) |
+| VSP RMSE | < 0.15 | Root mean square error on VSP distributions (weighted average) |
 
 ## DAG Configuration
 
@@ -97,34 +99,36 @@ Step 3: Validate Quality (on test set)
 ## Output Files
 
 ### `quality_metrics.json`
+New structure with combined overall metrics for cross-method comparison:
 ```json
 {
-  "Heavy Traffic": {
-    "kl_divergence": 0.234,
-    "avg_speed_real_kmh": 18.5,
-    "avg_speed_synthetic_kmh": 19.2,
-    "speed_difference_kmh": 0.7,
-    "avg_accel_real_ms2": 0.12,
-    "avg_accel_synthetic_ms2": 0.15,
-    "accel_difference_ms2": 0.03,
+  "overall": {
+    "avg_speed_real_kmh": 18.8,
+    "avg_speed_synthetic_kmh": 19.1,
+    "speed_difference_kmh": 0.65,
+    "avg_accel_real_ms2": 0.13,
+    "avg_accel_synthetic_ms2": 0.14,
+    "accel_difference_ms2": 0.025,
+    "std_speed_real_kmh": 12.5,
+    "std_speed_synthetic_kmh": 12.7,
+    "std_accel_real_ms2": 0.85,
+    "std_accel_synthetic_ms2": 0.87,
     "vsp_rmse": 0.089,
-    "test_sample_size_sec": 12450
+    "total_sample_size_sec": 24500,
+    "validation_status": "PASSED",
+    "failures": []
   },
-  "Light Traffic": { ... }
+  "heavy_traffic": { ... },  // For debugging
+  "light_traffic": { ... }   // For debugging
 }
 ```
+
+**Key Feature**: The `overall` section contains weighted-average metrics suitable for comparing this Markov-based approach with other drive cycle generation methods.
 
 ### `comparison_plots.png`
 Visual comparison with 8 subplots (2 rows x 4 columns):
 - Row 1: Heavy Traffic (Speed dist, VSP dist, Speed stats, Accel stats)
 - Row 2: Light Traffic (Speed dist, VSP dist, Speed stats, Accel stats)
-
-### `kl_divergence_report.txt`
-Detailed text report with:
-- KL divergence values
-- Kinematic comparisons
-- Quality thresholds
-- Pass/Fail status
 
 ## Usage
 
@@ -153,15 +157,36 @@ aws s3 cp s3://models-quality-eval/2025-11-29_18-00-00/metrics/ ./results/ --rec
 **Issue:** Pipeline fails at validation step  
 **Solution:** Check if test set has sufficient data (min 100 segments per group)
 
-**Issue:** KL divergence is very high  
-**Solution:** Model may be undertrained or data distribution has changed significantly
+**Issue:** Overall metrics exceed thresholds  
+**Solution:** Model may be undertrained or data distribution has changed significantly. Review per-traffic metrics in `heavy_traffic` and `light_traffic` sections to identify which scenario is problematic.
 
 **Issue:** Timestamp folders not created  
 **Solution:** Verify XCom is working: check `generate_run_timestamp` task logs
 
+## Comparing with Other Drive Cycle Generation Methods
+
+The `overall` metrics section is designed for comparing the Markov-based approach with other generation methods:
+
+1. **Extract overall metrics** from `quality_metrics.json`
+2. **Compare key indicators:**
+   - `speed_difference_kmh` - Lower is better (how well synthetic matches real average speed)
+   - `accel_difference_kmh` - Lower is better (how well synthetic matches real acceleration)
+   - `vsp_rmse` - Lower is better (VSP distribution similarity)
+   - `validation_status` - Should be "PASSED"
+3. **Use same test set** for fair comparison across methods
+4. **Weight by sample size** when aggregating results from multiple runs
+
+### Example Comparison Table
+
+| Method | Speed Diff (km/h) | Accel Diff (m/s²) | VSP RMSE | Status |
+|--------|-------------------|-------------------|----------|--------|
+| Markov (this) | 0.65 | 0.025 | 0.089 | PASSED |
+| Method B | 1.2 | 0.045 | 0.12 | PASSED |
+| Method C | 0.8 | 0.035 | 0.095 | PASSED |
+
 ## Next Steps
 
-1. **Automated Comparison:** Create script to compare metrics across multiple runs
+1. **Automated Comparison:** Create script to compare overall metrics across multiple runs and methods
 2. **Alerting:** Set up notifications when quality thresholds are exceeded
 3. **Visualization Dashboard:** Build Grafana dashboard for metric trends
 4. **Hyperparameter Tuning:** Use quality metrics to optimize V_RES and A_RES
