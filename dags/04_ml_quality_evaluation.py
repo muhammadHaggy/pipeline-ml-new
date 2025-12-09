@@ -80,27 +80,27 @@ with DAG(
         }
     )
 
-    # # Step 3: Validate Quality on Test Set
-    # ml_validate_quality = PapermillOperator(
-    #     task_id='step_03_ml_validate_quality',
-    #     input_nb=get_notebook_path('08_ml_validate_quality.ipynb'),
-    #     output_nb=get_log_path('08_ml_quality_eval_validation.ipynb'),
-    #     kernel_name="python3",
-    #     parameters={
-    #         'RUN_TIMESTAMP': "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}",
-    #         'INPUT_TEST_DATA': "s3://models-quality-eval-ml/test/test_data.pkl",
-    #         'INPUT_ML_MODEL_PATH': "s3://models-quality-eval-ml/models/speed_accel_model.pkl",
-    #         'OUTPUT_METRICS_PATH': "s3://models-quality-eval-ml/metrics/quality_metrics.json",
-    #         'OUTPUT_PLOT_PATH': "s3://models-quality-eval-ml/metrics/validation_plots.png",
+    # Step 3: Validate Quality on Test Set
+    ml_validate_quality = PapermillOperator(
+        task_id='step_03_ml_validate_quality',
+        input_nb=get_notebook_path('08_ml_validate_quality.ipynb'),
+        output_nb=get_log_path('08_ml_quality_eval_validation.ipynb'),
+        kernel_name="python3",
+        parameters={
+            'RUN_TIMESTAMP': "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}",
+            'INPUT_TEST_DATA': "s3://models-quality-eval-ml/test/test_data.pkl",
+            'INPUT_ML_MODEL_PATH': "s3://models-quality-eval-ml/models/speed_accel_model.pkl",
+            'OUTPUT_METRICS_PATH': "s3://models-quality-eval-ml/metrics/quality_metrics.json",
+            'OUTPUT_PLOT_PATH': "s3://models-quality-eval-ml/metrics/validation_plots.png",
 
-    #         'MIN_R2_SCORE': 0.85,
-    #         'MAX_SPEED_RMSE': 2.5,   
-    #         'MAX_ACCEL_RMSE': 0.7,   
-    #         'MAX_SPEED_MAE': 2.0,  
-    #         'MAX_ACCEL_MAE': 0.5,   
-    #         **COMMON_PARAMS
-    #     }
-    # )
+            'MIN_R2_SCORE': 0.85,
+            'MAX_SPEED_RMSE': 2.5,   
+            'MAX_ACCEL_RMSE': 0.7,   
+            'MAX_SPEED_MAE': 2.0,  
+            'MAX_ACCEL_MAE': 0.5,   
+            **COMMON_PARAMS
+        }
+    )
 
     ml_validate_quality_with_emissions = PapermillOperator(
         task_id='step_04_ml_validate_quality_with_emissions',
@@ -124,4 +124,4 @@ with DAG(
     )
 
 
-    get_timestamp >> ml_train_test_split >> ml_train_model >> ml_validate_quality_with_emissions
+    get_timestamp >> ml_train_test_split >> ml_train_model >> ml_validate_quality >> ml_validate_quality_with_emissions
