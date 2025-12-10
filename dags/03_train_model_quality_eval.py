@@ -51,21 +51,21 @@ with DAG(
         provide_context=True
     )
 
-    # Step 1: Train/Test Split
-    preprocess_split = PapermillOperator(
-        task_id='step_01_train_test_split',
-        input_nb=get_notebook_path('01_preprocess_train_test_split.ipynb'),
-        output_nb=get_log_path('01_quality_eval_split.ipynb'),
+    # Step 1: Load Fixed Train/Test Data and Group by Traffic
+    load_fixed_data = PapermillOperator(
+        task_id='step_01_load_fixed_train_test',
+        input_nb=get_notebook_path('01_load_fixed_train_test.ipynb'),
+        output_nb=get_log_path('01_quality_eval_load_data.ipynb'),
         kernel_name="python3",
         parameters={
-            'INPUT_FOLDER': 's3://processed-data/',
+            'INPUT_TRAIN_CSV': 's3://models-quality-eval/data/train.csv',
+            'INPUT_TEST_CSV': 's3://models-quality-eval/data/test.csv',
             'RUN_TIMESTAMP': "{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}",
             'OUTPUT_TRAIN_DATA': "s3://models-quality-eval/{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}/train/grouped_segments.pkl",
             'OUTPUT_TEST_DATA': "s3://models-quality-eval/{{ task_instance.xcom_pull(task_ids='generate_run_timestamp', key='run_timestamp') }}/test/grouped_segments.pkl",
             'SPEED_THRESHOLD': 25.0,
-            'MIN_DURATION': 15,
-            'TRAIN_RATIO': 0.8,
-            'RANDOM_SEED': 42,
+            'MIN_DURATION_TRAIN': 5,
+            'MIN_DURATION_TEST': 0,
             **COMMON_PARAMS
         }
     )
@@ -105,4 +105,4 @@ with DAG(
         }
     )
 
-    get_timestamp >> preprocess_split >> train_markov >> validate_quality
+    get_timestamp >> load_fixed_data >> train_markov >> validate_quality

@@ -6,10 +6,11 @@ This is an **independent training pipeline** designed to measure the quality of 
 
 ## Key Features
 
-### 🎯 **Train/Test Split (80:20)**
-- Randomly splits data into 80% training and 20% testing
-- Uses fixed random seed (42) for reproducibility
-- Ensures no data leakage between train and test sets
+### 🎯 **Fixed Train/Test Data**
+- Uses pre-defined train.csv and test.csv from MinIO (`s3://models-quality-eval/data/`)
+- Ensures reproducible comparisons across different drive cycle generation methods
+- Same train/test split can be used by all methods for fair evaluation
+- No random splitting - completely deterministic
 
 ### 📊 **Comprehensive Quality Metrics**
 
@@ -43,19 +44,23 @@ s3://models-quality-eval/
 ## Pipeline Architecture
 
 ```
-Step 1: Train/Test Split
+Step 1: Load Fixed Train/Test Data and Group by Traffic
     ↓
 Step 2: Train Markov Models (on train set only)
     ↓
 Step 3: Validate Quality (on test set)
 ```
 
-### Step 1: Train/Test Split
-**Notebook:** `01_preprocess_train_test_split.ipynb`
-- Loads processed data from `s3://processed-data/`
-- Groups segments by traffic condition (Heavy/Light)
-- Randomly splits each group 80:20
+### Step 1: Load Fixed Train/Test Data
+**Notebook:** `01_load_fixed_train_test.ipynb`
+- Loads fixed train.csv and test.csv from `s3://models-quality-eval/data/`
+- Groups segments by traffic condition (Heavy/Light) using speed threshold
+- No random splitting - uses pre-defined data splits
+- **Different filtering for train vs test**:
+  - Train: `MIN_DURATION_TRAIN = 5` seconds (quality over quantity)
+  - Test: `MIN_DURATION_TEST = 0` seconds (accept all segments for comprehensive evaluation)
 - Saves to versioned paths
+- **CSV Format Expected**: Columns `speed_kmh`, `acceleration_ms2` (or `acc_forward`), and optionally `segment_id`
 
 ### Step 2: Train Markov Models
 **Notebook:** `03_train_markov_quality_eval.ipynb`
@@ -94,7 +99,34 @@ Applied to **combined metrics** across both heavy and light traffic conditions:
 ✅ **Separate MinIO paths** - `s3://models-quality-eval/` vs `s3://models/`  
 ✅ **Different tags** - Easy to filter in Airflow UI  
 ✅ **Versioned outputs** - Multiple test runs preserved  
+✅ **Fixed data splits** - Reproducible comparisons with other methods  
 ✅ **Same schedule** - Can run in parallel without interference
+
+## Data Preparation
+
+Before running this pipeline, you need to prepare the fixed train/test data:
+
+1. **Create the data folder** in MinIO bucket `models-quality-eval`:
+   ```bash
+   aws s3 mb s3://models-quality-eval/data/ --endpoint-url http://minio:9000
+   ```
+
+2. **Upload train.csv and test.csv**:
+   ```bash
+   aws s3 cp train.csv s3://models-quality-eval/data/train.csv --endpoint-url http://minio:9000
+   aws s3 cp test.csv s3://models-quality-eval/data/test.csv --endpoint-url http://minio:9000
+   ```
+
+3. **CSV Format Requirements**:
+   - Required columns: `speed_kmh`, and either `acceleration_ms2` or `acc_forward`
+   - Optional column: `segment_id` (for grouping rows into segments)
+   - Data should be preprocessed (1Hz sampling rate recommended)
+   - The notebook automatically detects which acceleration column is present
+   
+4. **Why Fixed Data?**
+   - Ensures all drive cycle generation methods use identical train/test data
+   - Eliminates variability from random splitting
+   - Makes comparisons fair and reproducible
 
 ## Output Files
 
@@ -156,6 +188,12 @@ aws s3 cp s3://models-quality-eval/2025-11-29_18-00-00/metrics/ ./results/ --rec
 ```
 
 ## Troubleshooting
+
+**Issue:** Pipeline fails at Step 1 (load data)  
+**Solution:** Verify train.csv and test.csv exist in `s3://models-quality-eval/data/` and have required columns
+
+**Issue:** "Missing required column" error  
+**Solution:** Ensure CSV files have `speed_kmh` and either `acceleration_ms2` or `acc_forward` columns
 
 **Issue:** Pipeline fails at validation step  
 **Solution:** Check if test set has sufficient data (min 100 segments per group)
